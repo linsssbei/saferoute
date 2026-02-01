@@ -1,0 +1,14 @@
+[project]
+name = "saferoute"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyroute2",
+    "click",
+    "requests",
+]
+
+[project.scripts]
+saferoute = "saferoute.cli:main"
