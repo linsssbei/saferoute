@@ -23,6 +23,11 @@ COPY app/ ./app/
 # Expose web UI port
 EXPOSE 8080
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Privileged mode required at runtime to modify network stack
 # Default to running the web server
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["python", "-m", "app.server"]

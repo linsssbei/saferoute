@@ -9,6 +9,27 @@ logger = logging.getLogger(__name__)
 class TunnelManager:
     def __init__(self, config_store: ConfigStore):
         self.config_store = config_store
+        self.cleanup_stale_tunnels()
+
+    def cleanup_stale_tunnels(self):
+        """Clean up any pre-existing Saferoute interfaces (sr_*) from previous runs."""
+        logger.info("Scanning for stale Saferoute interfaces...")
+        cleaned = 0
+        with IPRoute() as ip:
+            # List all links
+            links = ip.get_links()
+            for link in links:
+                ifname = link.get_attr('IFLA_IFNAME')
+                if ifname and ifname.startswith('sr_'):
+                    try:
+                        logger.info(f"Removing stale interface: {ifname}")
+                        ip.link('del', index=link['index'])
+                        cleaned += 1
+                    except Exception as e:
+                        logger.error(f"Failed to remove {ifname}: {e}")
+        
+        if cleaned > 0:
+            logger.info(f"Cleaned up {cleaned} stale Saferoute interfaces")
 
     def setup_tunnel(self, name):
         profile = self.config_store.get_profile(name)

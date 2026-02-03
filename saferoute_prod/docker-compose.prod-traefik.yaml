@@ -1,9 +1,9 @@
-version: '3.8'
+
 
 services:
   saferoute:
-    build: .
-    image: saferoute:latest
+    # build: . # QNAP/Portainer cannot build from source without files. Use image below.
+    image: ghcr.io/linsssbei/saferoute:latest # CHANGE THIS to your actual image
     container_name: saferoute_gateway
     restart: unless-stopped
     privileged: true
@@ -24,18 +24,18 @@ services:
       - ./data:/app/data/configs
       # Mount kernel modules for WireGuard (optional if using userspace)
       - /lib/modules:/lib/modules
-    networks:
-      - default
-      - proxy # Connect to Traefik network
-    labels:
-      - "traefik.enable=true"
-      # Router configuration
-      - "traefik.http.routers.saferoute.rule=Host(`saferoute.local`)" # CHANGE THIS to your domain
-      - "traefik.http.routers.saferoute.entrypoints=web"
-      - "traefik.http.routers.saferoute.service=saferoute"
-      # Service configuration (point to internal port 8080)
-      - "traefik.http.services.saferoute.loadbalancer.server.port=8080"
+    
+    # CRITICAL: Use host network for routing functionality
+    # NOTE: This means Traefik labels won't work - access UI directly at http://<QNAP-IP>:8080
+    network_mode: host
+    
+    # Traefik labels are commented out because host networking bypasses Docker networks
+    # If you need Traefik access, use a reverse proxy on the QNAP host itself (e.g., nginx)
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.saferoute.rule=Host(`saferoute.local`)"
+    #   - "traefik.http.routers.saferoute.entrypoints=web"
+    #   - "traefik.http.routers.saferoute.service=saferoute"
+    #   - "traefik.http.services.saferoute.loadbalancer.server.port=8080"
 
-networks:
-  proxy:
-    external: true
+# Networks section removed - using host networking instead

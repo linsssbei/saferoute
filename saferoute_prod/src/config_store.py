@@ -58,7 +58,7 @@ class ConfigStore:
         self.profiles[name] = {
             "config_path": dest_path,
             "table_id": table_id,
-            "interface_name": f"wg_{name}"[:15], # Linux interface limit
+            "interface_name": f"sr_{name}"[:15], # Linux interface limit
             "endpoint": parsed['Peer'].get('Endpoint'),
             "allowed_ips": parsed['Peer'].get('AllowedIPs'),
             "address": parsed['Interface'].get('Address')
