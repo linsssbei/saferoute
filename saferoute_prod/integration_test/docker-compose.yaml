@@ -1,0 +1,95 @@
+services:
+  # The Gateway (Our Product)
+  gateway:
+    build: ..
+    container_name: saferoute_gateway_test
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./configs:/app/data/configs # Mounts entire configs directory
+    ports:
+      - "8081:8080"  # Web UI (Port 8081 to avoid conflict)
+    depends_on:
+      - wg-server
+    networks:
+      vpc:
+        ipv4_address: 172.30.0.10
+
+  # Mock WireGuard Server
+  wg-server:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: mock_wg_server_test
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - ./configs/server:/config/wg_confs
+    environment:
+      - PUID=1000
+      - PGID=1000
+    networks:
+      vpc:
+        ipv4_address: 172.30.0.5
+
+  # First Client Device
+  client:
+    image: alpine:latest
+    container_name: lan_client_test
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - gateway
+    command: >
+      sh -c "apk add curl && 
+             ip route del default && 
+             ip route add default via 172.30.0.10 && 
+             echo 'Client ready. Gateway set to 172.30.0.10' &&
+             tail -f /dev/null"
+    networks:
+      vpc:
+        ipv4_address: 172.30.0.20
+
+  # Second Client Device
+  client2:
+    image: alpine:latest
+    container_name: lan_client_2_test
+
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - gateway
+    command: >
+      sh -c "apk add curl && 
+             ip route del default && 
+             ip route add default via 172.30.0.10 && 
+             echo 'Client 2 ready. Gateway set to 172.30.0.10' &&
+             tail -f /dev/null"
+    networks:
+      vpc:
+        ipv4_address: 172.30.0.21
+
+  # Third Client Device (for UI testing - no pre-configured mapping)
+  client3:
+    image: alpine:latest
+    container_name: lan_client_3_test
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - gateway
+    command: >
+      sh -c "apk add curl && 
+             ip route del default && 
+             ip route add default via 172.30.0.10 && 
+             echo 'Client 3 ready. Gateway set to 172.30.0.10' &&
+             tail -f /dev/null"
+    networks:
+      vpc:
+        ipv4_address: 172.30.0.24
+
+networks:
+  vpc:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

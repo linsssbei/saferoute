@@ -1,0 +1,9 @@
+# Saferoute Configuration File
+# This file defines the locations of WireGuard configs and device mappings
+
+# Directory containing WireGuard .conf files
+wireguard_configs: /app/data/configs/wireguard
+
+# Device mapping file (YAML format)
+# Defines which IP addresses should route through which tunnels
+device_mappings: /app/data/configs/mappings/devices.yaml

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saferoute - WireGuard Manager</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🛡️ Saferoute</h1>
+            <p class="subtitle">WireGuard Tunnel Manager</p>
+        </header>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Checking status...</span>
+            <button class="btn btn-primary" id="applyBtn" onclick="applyChanges()">
+                🚀 Apply All
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Configs Section -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>📁 WireGuard Configs</h2>
+                    <button class="btn btn-success" onclick="showAddConfigModal()">+ Add Config</button>
+                </div>
+                <div class="card-body">
+                    <div id="configsList" class="list">
+                        <p class="loading">Loading configs...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Mappings Section -->
+            <section class="card">
+                <div class="card-header">
+                    <h2>🔗 Device Mappings</h2>
+                    <button class="btn btn-success" onclick="showAddMappingModal()">+ Add Mapping</button>
+                </div>
+                <div class="card-body">
+                    <div id="mappingsList" class="list">
+                        <p class="loading">Loading mappings...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tunnel Status -->
+        <section class="card">
+            <div class="card-header">
+                <h2>📊 Tunnel Status</h2>
+                <button class="btn btn-secondary" onclick="refreshStatus()">🔄 Refresh</button>
+            </div>
+            <div class="card-body">
+                <pre id="tunnelStatus" class="status-output">Loading...</pre>
+            </div>
+        </section>
+    </div>
+
+    <!-- Config Modal -->
+    <div class="modal" id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="configModalTitle">Config</h3>
+                <button class="close-btn" onclick="closeModal('configModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" id="configNameGroup">
+                    <label for="configName">Name</label>
+                    <input type="text" id="configName" placeholder="e.g., us-west">
+                </div>
+                <div class="form-group">
+                    <label for="configContent">Config Content</label>
+                    <textarea id="configContent" rows="15" placeholder="[Interface]
+PrivateKey = ...
+Address = ...
+
+[Peer]
+PublicKey = ...
+Endpoint = ...
+AllowedIPs = 0.0.0.0/0"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('configModal')">Cancel</button>
+                <button class="btn btn-danger" id="deleteConfigBtn" onclick="deleteConfig()"
+                    style="display:none">Delete</button>
+                <button class="btn btn-primary" id="saveConfigBtn" onclick="saveConfig()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapping Modal -->
+    <div class="modal" id="mappingModal">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3 id="mappingModalTitle">Device Mapping</h3>
+                <button class="close-btn" onclick="closeModal('mappingModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="mappingIp">Device IP</label>
+                    <input type="text" id="mappingIp" placeholder="e.g., 192.168.1.100">
+                </div>
+                <div class="form-group">
+                    <label for="mappingNickname">Nickname (optional)</label>
+                    <input type="text" id="mappingNickname" placeholder="e.g., Living Room TV">
+                </div>
+                <div class="form-group">
+                    <label for="mappingTunnel">Tunnel</label>
+                    <select id="mappingTunnel">
+                        <option value="">Select tunnel...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="mappingActive" checked>
+                        <span class="toggle-text">Active</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('mappingModal')">Cancel</button>
+                <button class="btn btn-danger" id="deleteMappingBtn" onclick="deleteMapping()"
+                    style="display:none">Delete</button>
+                <button class="btn btn-primary" id="saveMappingBtn" onclick="saveMapping()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>

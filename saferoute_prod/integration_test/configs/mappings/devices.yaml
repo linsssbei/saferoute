@@ -1,0 +1,16 @@
+devices:
+- active: true
+  ip: 172.29.0.20
+  nickname: TV
+  tunnel: tw
+- active: false
+  ip: 172.29.0.21
+  nickname: Client 2 - Japan
+  tunnel: jp-tok
+- active: false
+  ip: 172.29.0.24
+  nickname: sup
+  tunnel: tw
+- active: false
+  ip: 172.29.0.50
+  tunnel: jp-tok

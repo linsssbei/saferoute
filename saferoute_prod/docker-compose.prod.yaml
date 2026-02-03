@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  saferoute:
+    build: .
+    image: saferoute:latest
+    container_name: saferoute_gateway
+    restart: unless-stopped
+    privileged: true
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    ports:
+      - "8080:8080"      # Web UI
+      # - "51820:51820/udp" # WireGuard incoming (uncomment if serving as server)
+    environment:
+      - CONFIG_DIR=/app/data/configs
+      - TZ=UTC
+    volumes:
+      # Mount your configuration directory here
+      - ./data:/app/data/configs
+      # Mount kernel modules for WireGuard (optional if using userspace)
+      - /lib/modules:/lib/modules
+    networks:
+      default:
+        driver: bridge

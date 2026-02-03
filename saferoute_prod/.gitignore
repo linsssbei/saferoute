@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv/
+
+# System
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Project Specific - Sensitive Data
+# Integration Test Data
+integration_test/configs/wireguard/*
+!integration_test/configs/wireguard/.gitkeep
+integration_test/configs/server/wg0.conf
+
+# Production Data (if running local docker-compose with bind mounts)
+data/
