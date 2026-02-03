@@ -6,7 +6,7 @@ Saferoute is a lightweight, Docker-based gateway that allows you to route specif
 
 It is designed to solve the "all-or-nothing" problem of router-based VPNs. With Saferoute, you can unblock streaming content on your TV (via a VPN) while keeping your gaming PC or work laptop on your fast, local ISP connection—all controlled via a simple Web UI.
 
-![Dashboard Screenshot](https://raw.githubusercontent.com/linsssbei/saferoute/main/docs/dashboard.png)
+![Dashboard Screenshot](docs/dashboard.png)
 
 ---
 
