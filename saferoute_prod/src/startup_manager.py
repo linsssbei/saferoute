@@ -103,6 +103,9 @@ class StartupManager:
                 devices = []
         
         # Step 3: Setup all tunnels
+        logger.info("Cleaning up stale tunnels...")
+        self.tunnel_manager.cleanup_stale_tunnels()
+
         logger.info("Setting up tunnels...")
         setup_tunnels = []
         for tunnel_name in tunnel_names.keys():
