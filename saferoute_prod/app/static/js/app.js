@@ -9,12 +9,51 @@ let editingConfig = null;
 let editingMapping = null;
 let hasUnsavedChanges = false;
 
+// ============ Stats ============
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+async function fetchStats() {
+    try {
+        const stats = await api('/api/stats');
+
+        // Update stats for each mapping
+        document.querySelectorAll('.mapping-stats').forEach(el => {
+            const tunnelName = el.dataset.tunnel;
+            const tunnelStats = stats[tunnelName];
+
+            if (tunnelStats) {
+                el.innerHTML = `
+                    <span class="stat-item" title="Download">↓ ${formatBytes(tunnelStats.rx_bytes)}</span>
+                    <span class="stat-item" title="Upload">↑ ${formatBytes(tunnelStats.tx_bytes)}</span>
+                `;
+            } else {
+                el.innerHTML = '<span class="stat-item dimmed">-</span>';
+            }
+        });
+    } catch (error) {
+        console.error('Failed to fetch stats:', error);
+    }
+}
+
+// Start polling
+setInterval(fetchStats, 3000);
+
+
 // ============ Init ============
 document.addEventListener('DOMContentLoaded', () => {
     loadConfigs();
     loadMappings();
     refreshStatus();
+    fetchStats(); // Initial fetch
 });
+
+// ... (Rest of the file remains similar, but need to update renderMappings)
 
 // ============ API Helpers ============
 async function api(endpoint, options = {}) {
@@ -183,13 +222,20 @@ function renderMappings() {
         return `
             <div class="list-item${inactiveClass}">
                 <div onclick='editMapping(${JSON.stringify(m.ip)}, ${JSON.stringify(m.tunnel)}, ${JSON.stringify(nickname)}, ${active})' style="flex: 1; cursor: pointer;">
-                    <span class="list-item-name">
-                        🖥️ ${displayName}
-                    </span>
-                    <span class="list-item-info">
+                    <div class="list-item-header">
+                        <span class="list-item-name">
+                            🖥️ ${displayName}
+                        </span>
                         ${statusBadge}
-                        → ${m.tunnel}
-                    </span>
+                    </div>
+                    <div class="list-item-details">
+                        <span class="list-item-info">
+                            → ${m.tunnel}
+                        </span>
+                        <div class="mapping-stats" data-tunnel="${m.tunnel}">
+                            <span class="stat-item dimmed">Loading...</span>
+                        </div>
+                    </div>
                 </div>
                 <label class="inline-toggle" onclick="event.stopPropagation()">
                     <input type="checkbox" ${active ? 'checked' : ''} 
@@ -200,6 +246,7 @@ function renderMappings() {
         `;
     }).join('');
 }
+
 
 async function toggleMappingActive(ip, active) {
     try {

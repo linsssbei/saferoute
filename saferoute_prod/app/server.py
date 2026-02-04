@@ -6,6 +6,8 @@ import subprocess
 import yaml
 from pathlib import Path
 from flask import Flask, jsonify, request, render_template, send_from_directory
+from src.config_store import ConfigStore
+from src.tunnel_manager import TunnelManager
 
 app = Flask(__name__, 
             template_folder='templates',
@@ -313,6 +315,7 @@ def apply_changes():
         }), 500
 
 
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Get current tunnel status."""
@@ -325,6 +328,20 @@ def get_status():
     except Exception as e:
         return jsonify({
             'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Get traffic statistics for active tunnels."""
+    try:
+        store = ConfigStore()
+        tm = TunnelManager(store)
+        stats = tm.get_tunnel_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({
             'error': str(e)
         }), 500
 

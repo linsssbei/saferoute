@@ -3,7 +3,7 @@ set -e
 
 # Configuration
 IMAGE_NAME="ghcr.io/linsssbei/saferoute"
-TAG="8"
+TAG="10"
 
 echo "🐳 Building and Pushing for Multi-Arch (amd64 + arm64)..."
 
