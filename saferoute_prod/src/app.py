@@ -2,7 +2,7 @@ import click
 import sys
 import logging
 import time
-from .utils import setup_logging, enable_ipv4_forwarding, enable_masquerade, enable_src_valid_mark
+from .utils import setup_logging, enable_ipv4_forwarding, enable_masquerade, enable_src_valid_mark, enable_forwarding_allow
 from .config_store import ConfigStore
 from .tunnel_manager import TunnelManager
 from .route_manager import RouteManager
@@ -31,6 +31,7 @@ def startup(config_file):
     enable_ipv4_forwarding()
     enable_src_valid_mark()
     enable_masquerade()
+    enable_forwarding_allow()  # CRITICAL: Allow unmapped traffic to pass through
     
     # Initialize components
     store = ConfigStore()
@@ -132,6 +133,7 @@ def start():
     enable_ipv4_forwarding()
     enable_src_valid_mark()
     enable_masquerade()
+    enable_forwarding_allow()
 
     # 2. Setup All Tunnels
     store = ConfigStore()

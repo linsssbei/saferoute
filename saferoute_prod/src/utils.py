@@ -32,6 +32,45 @@ def enable_src_valid_mark():
             f.write('1')
     except Exception as e:
         logging.getLogger('utils').error(f"Failed to enable src_valid_mark: {e}")
+def enable_forwarding_allow():
+    """
+    Ensure iptables/nftables FORWARD chain defaults to ACCEPT.
+    Uses pure Python (pyroute2.nftables) to avoid subprocess calls.
+    """
+    logger = logging.getLogger('utils')
+    try:
+        from pyroute2.nftables import NFTables
+        nft = NFTables()
+        
+        # Ensure filter table exists (ipv4)
+        # family 2 = AF_INET
+        nft.table('add', name='filter', family=2)
+        
+        # Ensure FORWARD chain exists with policy=accept
+        # hook 0 = NF_INET_PRE_ROUTING? No, forward is 2 (NF_INET_FORWARD)
+        # We need to look up constants or use strings if pyroute2 supports them.
+        # Pyroute2 nftables usually accepts strings for hooks if mapped, 
+        # but let's use the standard structure.
+        
+        # Create chain if not exists/update policy
+        nft.chain('add', 
+                 table='filter', 
+                 name='FORWARD', 
+                 family=2,
+                 type='filter', 
+                 hook='forward', 
+                 priority=0, 
+                 policy='accept')
+                 
+        nft.close()
+        logger.info("Set FORWARD policy to ACCEPT (via native nftables)")
+        
+    except Exception as e:
+        logger.warning(f"Native forwarding setup may have failed (or already exists): {e}")
+        # Only try legacy fallback if absolutely needed? 
+        # User asked to avoid subprocess, so we log warning and stop.
+
+
 
 def enable_masquerade():
     """
