@@ -1,0 +1,13 @@
+{
+  "test-vpn-new": {
+    "config_path": "/app/data/configs/wireguard/test-vpn-new.conf",
+    "table_id": 100,
+    "interface_name": "sr_test-vpn-new",
+    "endpoint": "172.30.0.5:51820",
+    "allowed_ips": "0.0.0.0/0",
+    "address": "10.13.13.2/32",
+    "dns_servers": [
+      "1.1.1.1"
+    ]
+  }
+}
