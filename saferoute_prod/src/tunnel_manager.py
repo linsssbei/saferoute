@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 class TunnelManager:
     def __init__(self, config_store: ConfigStore):
         self.config_store = config_store
-        self.cleanup_stale_tunnels()
 
     def cleanup_stale_tunnels(self):
         """Clean up any pre-existing Saferoute interfaces (sr_*) from previous runs."""
@@ -30,6 +29,34 @@ class TunnelManager:
         
         if cleaned > 0:
             logger.info(f"Cleaned up {cleaned} stale Saferoute interfaces")
+
+    def get_tunnel_stats(self):
+        """
+        Get traffic statistics for all active Saferoute tunnels.
+        Returns a dict: { 'profile_name': {'rx_bytes': int, 'tx_bytes': int}, ... }
+        """
+        stats = {}
+        with IPRoute() as ip:
+            links = ip.get_links()
+            for link in links:
+                ifname = link.get_attr('IFLA_IFNAME')
+                if ifname and ifname.startswith('sr_'):
+                    # Map 'sr_name' -> 'name'
+                    # But config_store generates 'sr_name' from 'name'. 
+                    # We might need to look up profile by ifname or just rely on convention.
+                    # Convention: sr_{name} but name might be truncated.
+                    # Actually config_store.get_profile(name) -> ifname="sr_"+name
+                    # So we can just strip "sr_" for display purposes or try to match exactly if needed.
+                    profile_name = ifname[3:] # Strip 'sr_' prefix
+                    
+                    # specific stats are in IFLA_STATS64 or IFLA_STATS
+                    link_stats = link.get_attr('IFLA_STATS64') or link.get_attr('IFLA_STATS')
+                    if link_stats:
+                        stats[profile_name] = {
+                            'rx_bytes': link_stats['rx_bytes'],
+                            'tx_bytes': link_stats['tx_bytes']
+                        }
+        return stats
 
     def setup_tunnel(self, name):
         profile = self.config_store.get_profile(name)

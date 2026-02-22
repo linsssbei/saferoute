@@ -6,6 +6,8 @@ import subprocess
 import yaml
 from pathlib import Path
 from flask import Flask, jsonify, request, render_template, send_from_directory
+from src.config_store import ConfigStore
+from src.tunnel_manager import TunnelManager
 
 app = Flask(__name__, 
             template_folder='templates',
@@ -266,11 +268,35 @@ def update_mapping(ip):
 
 @app.route('/api/mappings/<path:ip>', methods=['DELETE'])
 def delete_mapping(ip):
-    """Delete a device mapping."""
+    """Delete a device mapping and clean up rules."""
     mappings_path = Path(MAPPINGS_FILE)
     if not mappings_path.exists():
         return jsonify({'error': 'No mappings file'}), 404
     
+    # Clean up rules before deleting from file
+    try:
+        from src.route_manager import RouteManager
+        from src.config_store import ConfigStore
+        from pyroute2 import IPRoute
+        
+        store = ConfigStore()
+        rm = RouteManager(store)
+        
+        # Clean up DNS rules
+        rm.dns_manager.cleanup_dns_for_client(ip)
+        
+        # Remove routing rule
+        with IPRoute() as ipr:
+            try:
+                ipr.rule('del', src=ip)
+            except Exception:
+                pass
+    except Exception as e:
+        # Log warning but continue with delete
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to cleanup rules for {ip}: {e}")
+    
+    # Original delete logic (remove from YAML)
     with open(mappings_path) as f:
         config = yaml.safe_load(f) or {}
     
@@ -313,6 +339,7 @@ def apply_changes():
         }), 500
 
 
+
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """Get current tunnel status."""
@@ -321,6 +348,93 @@ def get_status():
         return jsonify({
             'success': True,
             'output': result.stdout if result.stdout else 'No tunnels active'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """Get traffic statistics for active tunnels."""
+    try:
+        store = ConfigStore()
+        tm = TunnelManager(store)
+        stats = tm.get_tunnel_stats()
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/debug/dns', methods=['GET'])
+def debug_dns():
+    """
+    Get detailed DNS configuration and rules for debugging.
+    Shows DNS leak prevention status.
+    """
+    try:
+        from src.route_manager import RouteManager
+        
+        store = ConfigStore()
+        rm = RouteManager(store)
+        
+        # Get all DNS rules
+        all_rules = rm.dns_manager.get_all_dns_rules()
+        
+        # Get tunnel DNS configurations
+        tunnels_dns = {}
+        for name, profile in store.list_profiles().items():
+            tunnels_dns[name] = {
+                'dns_servers': profile.get('dns_servers', []),
+                'interface': profile.get('interface_name'),
+                'table_id': profile.get('table_id')
+            }
+        
+        # Get mappings with DNS status
+        mappings = rm.load_mappings()
+        mappings_with_dns = []
+        for m in mappings:
+            dns_info = rm.dns_manager.get_dns_rules_for_client(m['ip'])
+            mappings_with_dns.append({
+                **m,
+                'dns_rules': dns_info
+            })
+        
+        return jsonify({
+            'success': True,
+            'active_dns_rules': all_rules,
+            'tunnel_dns_config': tunnels_dns,
+            'mappings': mappings_with_dns
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/debug/iptables', methods=['GET'])
+def debug_iptables():
+    """
+    Show current iptables rules related to SafeRoute.
+    """
+    try:
+        # Get NAT table (where DNS DNAT rules are)
+        nat_result = subprocess.run(['iptables', '-t', 'nat', '-L', '-n', '-v'], 
+                                   capture_output=True, text=True)
+        
+        # Get filter table
+        filter_result = subprocess.run(['iptables', '-L', '-n', '-v'],
+                                      capture_output=True, text=True)
+        
+        return jsonify({
+            'success': True,
+            'nat_table': nat_result.stdout,
+            'filter_table': filter_result.stdout
         })
     except Exception as e:
         return jsonify({

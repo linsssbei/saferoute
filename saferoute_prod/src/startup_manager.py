@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Dict, List
-from .config_store import ConfigStore
+from .config_store import ConfigStore, CONFIG_DIR
 from .tunnel_manager import TunnelManager
 from .route_manager import RouteManager
 
@@ -60,33 +60,63 @@ class StartupManager:
         logger.info(f"WireGuard configs directory: {wireguard_dir}")
         logger.info(f"Device mappings file: {device_mappings_file}")
         
-        # Step 1: Discover and import all WireGuard configs
-        conf_files = list(wireguard_dir.glob("*.conf"))
-        if not conf_files:
-            logger.warning(f"No .conf files found in {wireguard_dir}")
-            return
-        
-        logger.info(f"Found {len(conf_files)} WireGuard config files")
-        
+        # Initialize tunnel names dictionary
         tunnel_names = {}
-        for conf_file in conf_files:
-            # Use filename without extension as tunnel name
-            tunnel_name = conf_file.stem
-            tunnel_names[tunnel_name] = str(conf_file)
-            
-            # Import the config
-            try:
-                logger.info(f"Importing {conf_file.name} as '{tunnel_name}'")
-                # Check if already exists
-                existing = self.config_store.get_profile(tunnel_name)
-                if existing:
-                    logger.info(f"  Profile '{tunnel_name}' already exists, skipping import")
-                else:
-                    self.config_store.import_config(str(conf_file), tunnel_name)
-                    logger.info(f"  ✓ Imported '{tunnel_name}'")
-            except Exception as e:
-                logger.error(f"  ✗ Failed to import {conf_file.name}: {e}")
-                continue
+        
+        # Step 1: Auto-discover WireGuard configs in the wireguard directory
+        # This allows users to just copy .conf files and click "Apply All"
+        wireguard_config_dir = Path(CONFIG_DIR) / 'wireguard'
+        if wireguard_config_dir.exists():
+            conf_files = list(wireguard_config_dir.glob("*.conf"))
+            if conf_files:
+                logger.info(f"Auto-discovering configs in {wireguard_config_dir}")
+                logger.info(f"Found {len(conf_files)} WireGuard config files")
+                
+                for conf_file in conf_files:
+                    tunnel_name = conf_file.stem
+                    tunnel_names[tunnel_name] = str(conf_file)
+                    
+                    # Check if already imported
+                    existing = self.config_store.get_profile(tunnel_name)
+                    if existing:
+                        logger.info(f"  Profile '{tunnel_name}' already imported, skipping")
+                    else:
+                        try:
+                            logger.info(f"  Importing {conf_file.name} as '{tunnel_name}'")
+                            self.config_store.import_config(str(conf_file), tunnel_name)
+                            logger.info(f"  ✓ Imported '{tunnel_name}'")
+                        except Exception as e:
+                            logger.error(f"  ✗ Failed to import {conf_file.name}: {e}")
+                            continue
+        
+        # Step 1b: Also check the legacy wireguard_configs path from config file
+        if wireguard_dir.exists() and wireguard_dir != wireguard_config_dir:
+            conf_files = list(wireguard_dir.glob("*.conf"))
+            if conf_files:
+                logger.info(f"Found {len(conf_files)} additional configs in {wireguard_dir}")
+                
+                for conf_file in conf_files:
+                    tunnel_name = conf_file.stem
+                    if tunnel_name in tunnel_names:
+                        continue  # Already processed
+                    
+                    tunnel_names[tunnel_name] = str(conf_file)
+                    
+                    existing = self.config_store.get_profile(tunnel_name)
+                    if existing:
+                        logger.info(f"  Profile '{tunnel_name}' already exists, skipping import")
+                    else:
+                        try:
+                            logger.info(f"  Importing {conf_file.name} as '{tunnel_name}'")
+                            self.config_store.import_config(str(conf_file), tunnel_name)
+                            logger.info(f"  ✓ Imported '{tunnel_name}'")
+                        except Exception as e:
+                            logger.error(f"  ✗ Failed to import {conf_file.name}: {e}")
+                            continue
+        
+        if not tunnel_names:
+            logger.warning("No WireGuard configs found to import")
+            return
         
         # Step 2: Read device mappings
         if not device_mappings_file.exists():
@@ -103,6 +133,9 @@ class StartupManager:
                 devices = []
         
         # Step 3: Setup all tunnels
+        logger.info("Cleaning up stale tunnels...")
+        self.tunnel_manager.cleanup_stale_tunnels()
+
         logger.info("Setting up tunnels...")
         setup_tunnels = []
         for tunnel_name in tunnel_names.keys():
@@ -146,6 +179,14 @@ class StartupManager:
                 except Exception as e:
                     logger.error(f"  ✗ Failed to map {device_ip}: {e}")
                     continue
+        
+        # Step 6: Sync rules to ensure DNS cleanup for inactive mappings
+        logger.info("Syncing routing and DNS rules...")
+        try:
+            self.route_manager.sync_rules()
+            logger.info("  ✓ Rules synced successfully")
+        except Exception as e:
+            logger.error(f"  ✗ Failed to sync rules: {e}")
         
         logger.info("Startup complete!")
         logger.info(f"  Tunnels active: {len(setup_tunnels)}")
